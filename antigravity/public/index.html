@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinSignal — MBA Finance Daily Digest</title>
+  <meta name="description" content="A Bloomberg-inspired daily financial news digest powered by AI, built for MBA finance students." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Marked.js for Markdown → HTML rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /* ── Design Tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg-primary:    #0a0c10;
+      --bg-secondary:  #111520;
+      --bg-card:       #141924;
+      --bg-highlight:  #1a2035;
+      --border:        #1e2d45;
+      --border-accent: #2a4070;
+      --text-primary:  #e8edf5;
+      --text-secondary:#8da0b8;
+      --text-muted:    #4a6080;
+      --accent-orange: #f07020;
+      --accent-blue:   #3a8fd8;
+      --accent-green:  #20c070;
+      --accent-red:    #e05050;
+      --accent-gold:   #e8b830;
+      --glow-orange:   rgba(240, 112, 32, 0.18);
+      --glow-blue:     rgba(58, 143, 216, 0.15);
+      --font-ui:       'Inter', sans-serif;
+      --font-mono:     'IBM Plex Mono', monospace;
+      --radius-sm:     6px;
+      --radius-md:     10px;
+      --radius-lg:     16px;
+      --transition:    0.2s ease;
+    }
+
+    /* ── Reset & Base ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background grid ───────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(30, 45, 69, 0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 45, 69, 0.3) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header / Navigation ────────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10, 12, 16, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+
+    .nav-inner {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      gap: 1rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent-orange), var(--accent-gold));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px var(--glow-orange);
+    }
+
+    .logo-text {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 1.15rem;
+      color: var(--text-primary);
+      letter-spacing: 0.05em;
+    }
+
+    .logo-text span { color: var(--accent-orange); }
+
+    .nav-status {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent-green);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(32, 192, 112, 0.5); }
+      50%       { opacity: 0.7; box-shadow: 0 0 0 6px rgba(32, 192, 112, 0); }
+    }
+
+    /* ── Ticker tape ────────────────────────────────────────────────────────── */
+    .ticker-bar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      z-index: 99;
+    }
+
+    .ticker-label {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--accent-orange);
+      background: var(--bg-secondary);
+      padding: 0 1rem;
+      white-space: nowrap;
+      z-index: 2;
+      border-right: 1px solid var(--border);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      letter-spacing: 0.1em;
+    }
+
+    .ticker-scroll {
+      display: flex;
+      animation: ticker 40s linear infinite;
+      white-space: nowrap;
+      gap: 3rem;
+      padding-left: 2rem;
+    }
+
+    .ticker-scroll:hover { animation-play-state: paused; }
+
+    @keyframes ticker {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .ticker-item {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .ticker-item .sym { color: var(--text-primary); font-weight: 600; }
+    .ticker-item .up  { color: var(--accent-green); }
+    .ticker-item .dn  { color: var(--accent-red); }
+
+    /* ── Hero strip ─────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 1300px;
+      margin: 2.5rem auto 0;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .hero-title {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-title .highlight {
+      background: linear-gradient(90deg, var(--accent-orange), var(--accent-gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      margin-top: 0.5rem;
+      font-weight: 400;
+    }
+
+    .hero-badge {
+      background: linear-gradient(135deg, var(--accent-orange), var(--accent-gold));
+      color: #0a0c10;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      box-shadow: 0 0 24px var(--glow-orange);
+    }
+
+    /* ── Main layout ────────────────────────────────────────────────────────── */
+    .main-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1300px;
+      margin: 2rem auto 4rem;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────────────────────── */
+    .sidebar {
+      position: sticky;
+      top: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .sidebar-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      transition: border-color var(--transition);
+    }
+
+    .sidebar-card:hover { border-color: var(--border-accent); }
+
+    .sidebar-card-title {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--accent-orange);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.9rem;
+    }
+
+    /* Archive list */
+    #archive-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
+
+    #archive-list li a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      transition: background var(--transition), color var(--transition);
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    #archive-list li a:hover,
+    #archive-list li a.active {
+      background: var(--bg-highlight);
+      color: var(--text-primary);
+      border-color: var(--border-accent);
+    }
+
+    #archive-list li a .date-chip {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+    }
+
+    #archive-list li a .arrow { margin-left: auto; opacity: 0.5; }
+
+    /* Stats widget */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: var(--text-secondary); }
+    .stat-value { font-family: var(--font-mono); font-weight: 600; }
+    .stat-value.up  { color: var(--accent-green); }
+    .stat-value.dn  { color: var(--accent-red); }
+    .stat-value.neu { color: var(--accent-gold); }
+
+    /* ── Content pane ───────────────────────────────────────────────────────── */
+    .content-pane { display: flex; flex-direction: column; gap: 1.2rem; }
+
+    /* Loading / error states */
+    .state-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+
+    .state-card .icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+    .state-card .msg  { color: var(--text-secondary); margin-top: 0.4rem; font-family: var(--font-ui); font-size: 0.82rem; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent-orange);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Digest card */
+    .digest-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      animation: fadeUp 0.35s ease forwards;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .digest-card-header {
+      background: var(--bg-highlight);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .digest-date {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--accent-orange);
+      letter-spacing: 0.1em;
+      font-weight: 600;
+    }
+
+    .digest-tag {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 99px;
+      border: 1px solid;
+      letter-spacing: 0.06em;
+    }
+    .digest-tag.ai  { color: var(--accent-blue);  border-color: var(--accent-blue);  background: rgba(58,143,216,0.1); }
+    .digest-tag.mba { color: var(--accent-gold);  border-color: var(--accent-gold);  background: rgba(232,184,48,0.1); }
+
+    /* Markdown body */
+    .digest-body {
+      padding: 1.8rem 2rem;
+    }
+
+    .digest-body h1 { display: none; } /* title is in YAML front-matter, skip the duplicate h1 */
+
+    .digest-body h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent-orange);
+      border-left: 3px solid var(--accent-orange);
+      padding-left: 0.75rem;
+      margin: 2rem 0 0.8rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.02em;
+    }
+
+    .digest-body h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin: 1.2rem 0 0.5rem;
+    }
+
+    .digest-body p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+      line-height: 1.75;
+    }
+
+    .digest-body ul, .digest-body ol {
+      padding-left: 1.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .digest-body li {
+      font-size: 0.87rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.35rem;
+      line-height: 1.7;
+    }
+
+    .digest-body strong { color: var(--text-primary); }
+
+    .digest-body em { color: var(--accent-gold); font-style: normal; font-weight: 500; }
+
+    .digest-body code {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--bg-highlight);
+      color: var(--accent-green);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .digest-body pre {
+      background: var(--bg-highlight);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      margin: 0.8rem 0;
+    }
+
+    .digest-body pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.8rem;
+    }
+
+    .digest-body blockquote {
+      border-left: 3px solid var(--accent-blue);
+      margin: 0.8rem 0;
+      padding: 0.6rem 1rem;
+      background: var(--bg-highlight);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      color: var(--text-secondary);
+      font-size: 0.87rem;
+    }
+
+    .digest-body hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .digest-body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin: 1rem 0;
+    }
+
+    .digest-body th {
+      background: var(--bg-highlight);
+      color: var(--accent-orange);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-accent);
+    }
+
+    .digest-body td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      vertical-align: top;
+    }
+
+    .digest-body tr:hover td { background: var(--bg-highlight); }
+
+    /* ── Footer ─────────────────────────────────────────────────────────────── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    footer span { color: var(--accent-orange); }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+    /* ── Responsive ──────────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .main-wrapper { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-badge { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      .nav-inner { padding: 0; }
+      .hero, .main-wrapper { padding: 0 1rem; }
+      .digest-body { padding: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="nav-inner">
+      <a class="logo" href="#">
+        <div class="logo-icon">📈</div>
+        <span class="logo-text">Fin<span>Signal</span></span>
+      </a>
+      <div class="nav-status">
+        <span class="status-dot"></span>
+        LIVE · AI-POWERED DIGEST
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Ticker tape ──────────────────────────────────────────────────────── -->
+  <div class="ticker-bar" aria-label="Market ticker">
+    <div class="ticker-label">MARKETS</div>
+    <div class="ticker-scroll" id="ticker">
+      <!-- Duplicated for seamless loop -->
+      <span class="ticker-item"><span class="sym">NIFTY50</span> 24,312.10 <span class="up">▲ 0.42%</span></span>
+      <span class="ticker-item"><span class="sym">SENSEX</span> 79,802.55 <span class="dn">▼ 0.18%</span></span>
+      <span class="ticker-item"><span class="sym">GOLD</span> ₹73,450/10g <span class="up">▲ 1.12%</span></span>
+      <span class="ticker-item"><span class="sym">SILVER</span> ₹92,300/kg <span class="up">▲ 0.85%</span></span>
+      <span class="ticker-item"><span class="sym">CRUDE WTI</span> $81.40/bbl <span class="dn">▼ 0.30%</span></span>
+      <span class="ticker-item"><span class="sym">USD/INR</span> 83.52 <span class="dn">▼ 0.05%</span></span>
+      <span class="ticker-item"><span class="sym">10Y GSEC</span> 7.08% <span class="up">▲ 2bps</span></span>
+      <span class="ticker-item"><span class="sym">VIX</span> 14.22 <span class="dn">▼ 3.1%</span></span>
+      <!-- Duplicate for loop -->
+      <span class="ticker-item"><span class="sym">NIFTY50</span> 24,312.10 <span class="up">▲ 0.42%</span></span>
+      <span class="ticker-item"><span class="sym">SENSEX</span> 79,802.55 <span class="dn">▼ 0.18%</span></span>
+      <span class="ticker-item"><span class="sym">GOLD</span> ₹73,450/10g <span class="up">▲ 1.12%</span></span>
+      <span class="ticker-item"><span class="sym">SILVER</span> ₹92,300/kg <span class="up">▲ 0.85%</span></span>
+      <span class="ticker-item"><span class="sym">CRUDE WTI</span> $81.40/bbl <span class="dn">▼ 0.30%</span></span>
+      <span class="ticker-item"><span class="sym">USD/INR</span> 83.52 <span class="dn">▼ 0.05%</span></span>
+      <span class="ticker-item"><span class="sym">10Y GSEC</span> 7.08% <span class="up">▲ 2bps</span></span>
+      <span class="ticker-item"><span class="sym">VIX</span> 14.22 <span class="dn">▼ 3.1%</span></span>
+    </div>
+  </div>
+
+  <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+  <section class="hero" aria-label="Page header">
+    <div>
+      <h1 class="hero-title">
+        Daily <span class="highlight">Finance Digest</span><br />for MBA Students
+      </h1>
+      <p class="hero-sub">
+        AI-powered analysis of today's financial newspaper — macro, markets, commodities & theory.
+      </p>
+    </div>
+    <div class="hero-badge">GEMINI · POWERED</div>
+  </section>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <main class="main-wrapper" id="main">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Sidebar">
+      <!-- Archive -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-title">📁 Archive</div>
+        <ul id="archive-list">
+          <li><span style="font-size:0.78rem;color:var(--text-muted);">Loading digests…</span></li>
+        </ul>
+      </div>
+
+      <!-- Market snapshot (decorative static widget) -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-title">📊 Snapshot</div>
+        <div class="stat-row"><span class="stat-label">Fed Rate</span><span class="stat-value neu">5.25–5.50%</span></div>
+        <div class="stat-row"><span class="stat-label">RBI Repo</span><span class="stat-value neu">6.50%</span></div>
+        <div class="stat-row"><span class="stat-label">Gold (MCX)</span><span class="stat-value up">₹73,450</span></div>
+        <div class="stat-row"><span class="stat-label">Silver (MCX)</span><span class="stat-value up">₹92,300</span></div>
+        <div class="stat-row"><span class="stat-label">WTI Crude</span><span class="stat-value dn">$81.40</span></div>
+        <div class="stat-row"><span class="stat-label">INR/USD</span><span class="stat-value dn">83.52</span></div>
+      </div>
+
+      <!-- About -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-title">ℹ️ About</div>
+        <p style="font-size:0.78rem;color:var(--text-secondary);line-height:1.65;">
+          FinSignal uses the <strong style="color:var(--text-primary);">Gemini 1.5 Flash</strong> model to
+          analyze daily financial newspapers and produce structured MBA-level insights automatically.
+        </p>
+      </div>
+    </aside>
+
+    <!-- Content pane -->
+    <div class="content-pane" id="content-pane">
+      <div class="state-card" id="loading-state">
+        <div class="spinner"></div>
+        <div>Loading latest digest…</div>
+        <div class="msg">Fetching AI-generated analysis from the archive.</div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <footer>
+    Built with <span>❤</span> using Gemini AI · Deployed via GitHub Actions & Pages ·
+    For educational purposes only. Not financial advice.
+  </footer>
+
+  <!-- ── JavaScript ──────────────────────────────────────────────────────── -->
+  <script>
+    /* ── Config ──────────────────────────────────────────────────────────── */
+
+    // How many past digests to look back when scanning for available files.
+    const SCAN_DAYS = 30;
+
+    /* ── Utilities ───────────────────────────────────────────────────────── */
+
+    function formatDisplayDate(isoDate) {
+      // "2024-06-12" → "Wed, 12 Jun 2024"
+      const d = new Date(isoDate + 'T00:00:00');
+      return d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function getPastDates(n) {
+      const dates = [];
+      const today = new Date();
+      for (let i = 0; i < n; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        dates.push(d.toISOString().split('T')[0]);
+      }
+      return dates;
+    }
+
+    function digestUrl(dateStr) {
+      return `digests/digest-${dateStr}.md`;
+    }
+
+    /* ── Front-matter stripper ───────────────────────────────────────────── */
+
+    function stripFrontMatter(raw) {
+      // Remove YAML front-matter block (--- ... ---)
+      return raw.replace(/^---[\s\S]*?---\n+/, '');
+    }
+
+    /* ── Render a digest ─────────────────────────────────────────────────── */
+
+    function renderDigest(dateStr, markdown) {
+      const pane = document.getElementById('content-pane');
+      pane.innerHTML = '';
+
+      const card = document.createElement('article');
+      card.className = 'digest-card';
+      card.setAttribute('aria-label', `Finance digest for ${dateStr}`);
+
+      card.innerHTML = `
+        <div class="digest-card-header">
+          <span class="digest-date">📅 ${formatDisplayDate(dateStr)}</span>
+          <div style="display:flex;gap:0.5rem;">
+            <span class="digest-tag ai">AI ANALYSIS</span>
+            <span class="digest-tag mba">MBA-LEVEL</span>
+          </div>
+        </div>
+        <div class="digest-body" id="digest-content"></div>
+      `;
+
+      pane.appendChild(card);
+
+      const body = card.querySelector('#digest-content');
+      const cleaned = stripFrontMatter(markdown);
+      body.innerHTML = marked.parse(cleaned);
+    }
+
+    /* ── Show error ──────────────────────────────────────────────────────── */
+
+    function showError(message) {
+      const pane = document.getElementById('content-pane');
+      pane.innerHTML = `
+        <div class="state-card">
+          <span class="icon">📭</span>
+          <div>No digest available yet</div>
+          <div class="msg">${message}</div>
+        </div>
+      `;
+    }
+
+    /* ── Load a specific digest ──────────────────────────────────────────── */
+
+    async function loadDigest(dateStr) {
+      const pane = document.getElementById('content-pane');
+      pane.innerHTML = `
+        <div class="state-card">
+          <div class="spinner"></div>
+          <div>Loading digest…</div>
+        </div>
+      `;
+
+      // Highlight the active link in the archive
+      document.querySelectorAll('#archive-list li a').forEach(a => {
+        a.classList.toggle('active', a.dataset.date === dateStr);
+      });
+
+      try {
+        const res = await fetch(digestUrl(dateStr));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        renderDigest(dateStr, text);
+      } catch (err) {
+        showError(`Could not load digest for ${formatDisplayDate(dateStr)}. It may not have been generated yet.`);
+      }
+    }
+
+    /* ── Discover available digests ──────────────────────────────────────── */
+
+    async function discoverDigests() {
+      const candidates = getPastDates(SCAN_DAYS);
+      const found = [];
+
+      // Fire all HEAD requests in parallel for speed
+      const checks = candidates.map(async (dateStr) => {
+        try {
+          const res = await fetch(digestUrl(dateStr), { method: 'HEAD' });
+          if (res.ok) found.push(dateStr);
+        } catch (_) { /* ignore */ }
+      });
+
+      await Promise.all(checks);
+
+      // Sort descending (newest first)
+      found.sort((a, b) => b.localeCompare(a));
+      return found;
+    }
+
+    /* ── Build the archive sidebar ───────────────────────────────────────── */
+
+    function buildArchive(dates, activeDate) {
+      const list = document.getElementById('archive-list');
+      if (dates.length === 0) {
+        list.innerHTML = `<li><span style="font-size:0.78rem;color:var(--text-muted);">No digests found yet.</span></li>`;
+        return;
+      }
+
+      list.innerHTML = dates.map((d, idx) => `
+        <li>
+          <a href="#" data-date="${d}" class="${d === activeDate ? 'active' : ''}">
+            <span class="date-chip">${d}</span>
+            ${idx === 0 ? '<span style="font-size:0.65rem;color:var(--accent-green);margin-left:0.2rem;">LATEST</span>' : ''}
+            <span class="arrow">›</span>
+          </a>
+        </li>
+      `).join('');
+
+      list.querySelectorAll('a').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          loadDigest(a.dataset.date);
+          list.querySelectorAll('a').forEach(x => x.classList.remove('active'));
+          a.classList.add('active');
+        });
+      });
+    }
+
+    /* ── Bootstrap ───────────────────────────────────────────────────────── */
+
+    async function init() {
+      const available = await discoverDigests();
+
+      if (available.length === 0) {
+        showError('Push a PDF to <code>/raw_papers/</code> to generate your first digest via GitHub Actions.');
+        buildArchive([], null);
+        return;
+      }
+
+      const latest = available[0];
+      buildArchive(available, latest);
+      await loadDigest(latest);
+    }
+
+    // Configure marked.js options
+    marked.setOptions({ gfm: true, breaks: true });
+
+    // Start
+    init();
+  </script>
+
+</body>
+</html>
